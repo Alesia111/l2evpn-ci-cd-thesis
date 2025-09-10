@@ -1,1 +1,1 @@
-# l2evpn-ci-cd-thesis
+CI/CD EVPN Thesis Project
