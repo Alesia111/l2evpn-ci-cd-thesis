@@ -17,5 +17,5 @@ topology:
       kind: linux
       image: ghcr.io/hellt/network-multitool:latest
   links:
-    - endpoints: ["spine1:eth1", "leaf1:eth1"]
-    - endpoints: ["spine1:eth2", "leaf2:eth1"]
+    - endpoints: ["spine1:eth1", "leaf1:eth1"]  # /31 spine1-eth1 <-> leaf1-eth1
+    - endpoints: ["spine1:eth2", "leaf2:eth1"]  # /31 spine1-eth2 <-> leaf2-eth1
