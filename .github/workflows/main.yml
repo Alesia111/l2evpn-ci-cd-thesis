@@ -1,0 +1,47 @@
+name: NetDevOps CI/CD
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-deploy-validate:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y docker.io containerlab python3-pip
+        pip3 install pyyaml
+
+    - name: Precheck Topology
+      run: python3 scripts/precheck_yaml.py
+
+    - name: Deploy Lab
+      run: bash scripts/deploy_lab.sh
+
+    - name: Push Config
+      run: python3 scripts/push_config.py
+
+    - name: Run Tests
+      run: python3 scripts/run_tests.py | tee validation.log
+
+    - name: Archive results
+      uses: actions/upload-artifact@v3
+      with:
+        name: logs
+        path: |
+          validation.log
+          docker_ps.txt
+          clab_inspect.txt
