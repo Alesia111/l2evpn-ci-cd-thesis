@@ -1,47 +1,49 @@
 name: NetDevOps CI/CD
-
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  push: { branches: [ "main" ] }
+  pull_request: { branches: [ "main" ] }
 
 jobs:
-  build-deploy-validate:
+  precheck:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with: { python-version: '3.10' }
+      - name: Lint / Precheck topology
+        run: |
+          pip3 install --user pyyaml
+          python3 scripts/precheck_yaml.py
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
+  deploy:
+    runs-on: self-hosted
+    needs: precheck
+    steps:
+      - uses: actions/checkout@v3
+      - name: Prepare system
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker.io python3-pip
+          pip3 install --user pyyaml
+          curl -sL https://get.containerlab.dev | sudo -E bash
+          sudo sysctl -w net.ipv4.ip_forward=1
+          docker --version
+          containerlab version
+      - name: Deploy lab
+        run: bash scripts/deploy_lab.sh
+      - name: Push base config
+        run: python3 scripts/push_config.py
+      - name: Run validation tests
+        run: |
+          python3 scripts/run_tests.py | tee validation.log
+          docker ps > docker_ps.txt || true
+          containerlab inspect -t ./evpn01.yml --all > clab_inspect.txt || true
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: netdevops-logs
+          path: |
+            validation.log
+            docker_ps.txt
+            clab_inspect.txt
 
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y docker.io containerlab python3-pip
-        pip3 install pyyaml
-
-    - name: Precheck Topology
-      run: python3 scripts/precheck_yaml.py
-
-    - name: Deploy Lab
-      run: bash scripts/deploy_lab.sh
-
-    - name: Push Config
-      run: python3 scripts/push_config.py
-
-    - name: Run Tests
-      run: python3 scripts/run_tests.py | tee validation.log
-
-    - name: Archive results
-      uses: actions/upload-artifact@v3
-      with:
-        name: logs
-        path: |
-          validation.log
-          docker_ps.txt
-          clab_inspect.txt
