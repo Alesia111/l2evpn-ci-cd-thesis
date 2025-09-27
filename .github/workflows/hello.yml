@@ -1,0 +1,10 @@
+name: Hello Demo
+on:
+  workflow_dispatch: {}   # shfaq butonin "Run workflow"
+jobs:
+  demo:
+    name: 1) Demo stage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Say hello
+        run: echo "CI runner OK"
