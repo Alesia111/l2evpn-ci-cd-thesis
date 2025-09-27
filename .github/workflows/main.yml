@@ -1,0 +1,30 @@
+name: L2EVPN CI/CD
+
+on:
+  workflow_dispatch: {}   # që ta nisësh manualisht
+
+jobs:
+  precheck:
+    name: 1) Precheck YAML
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Run precheck script
+        run: echo "Running precheck_yaml.py"
+
+  config:
+    name: 2) Push Config
+    needs: precheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Push configs
+        run: echo "Running push_config.py"
+
+  tests:
+    name: 3) Run Tests
+    needs: config
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping + show interface
+        run: echo "Running run_tests.py"
