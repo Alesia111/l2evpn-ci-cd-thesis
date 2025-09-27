@@ -1,0 +1,62 @@
+name: L2EVPN Demo CI/CD
+
+on:
+  workflow_dispatch: {}   
+  push:
+    branches: [ main ]
+
+jobs:
+  precheck:
+    name: 1) Precheck YAML
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Sanity check
+        run: |
+          echo "[PRECHECK] Repo fetched OK"
+          python - <<'PY'
+print("Precheck OK: structure & syntax would be validated here.")
+PY
+
+  config:
+    name: 2) Base Config
+    needs: precheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate config log (demo)
+        run: |
+          mkdir -p artifacts
+          echo "[PUSH] Placeholder: configs would be applied to devices." > artifacts/config.log
+          cat artifacts/config.log
+
+  validate:
+    name: 3) Validation
+    needs: config
+    runs-on: ubuntu-latest
+    steps:
+      - name: Simulate ping & write summary
+        run: |
+          mkdir -p artifacts
+          python - <<'PY'
+from datetime import datetime
+rows = [
+  "Run,Duration_s,Timestamp",
+  f"1,15,{datetime.now().isoformat(timespec='seconds')}",
+  f"2,8,{datetime.now().isoformat(timespec='seconds')}",
+  f"3,9,{datetime.now().isoformat(timespec='seconds')}",
+]
+open("artifacts/test_summary.csv","w").write("\n".join(rows))
+print(open("artifacts/test_summary.csv").read())
+PY
+
+  archive:
+    name: 4) Archive Logs
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: results
+          path: artifacts/**
