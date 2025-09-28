@@ -1,0 +1,111 @@
+name: L2EVPN CI/CD (Demo)
+
+on:
+  workflow_dispatch: {}        # nisje manuale nga tab-i Actions
+  push:
+    branches: [ main ]         # opsionale: nis kur bëhet push në main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: l2evpn-ci
+  cancel-in-progress: true
+
+jobs:
+  precheck:
+    name: 1) Precheck YAML & repo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps (pyyaml)
+        run: pip install pyyaml
+
+      - name: Lint evpn topology (syntaksë)
+        run: |
+          python - << 'PY'
+          import yaml,sys,os
+          with open('evpn01.yml') as f:
+              yaml.safe_load(f)
+          print("✅ evpn01.yml: OK")
+          PY
+
+      - name: Prepare logs dir
+        run: mkdir -p logs
+
+      - name: Write precheck log
+        run: echo "[precheck] OK - $(date -Iseconds)" | tee -a logs/pipeline.log
+
+  build:
+    name: 2) Build Lab (mock)
+    runs-on: ubuntu-latest
+    needs: precheck
+    steps:
+      - uses: actions/checkout@v4
+      - name: Simulo deploy (dry-run)
+        run: |
+          echo "Starting build..." | tee -a logs/pipeline.log
+          sleep 3
+          echo "✅ Build completed (mock) @ $(date -Iseconds)" | tee -a logs/pipeline.log
+
+      - name: Save duration CSV (Run 1)
+        run: |
+          echo "Run,Duration_s,Timestamp" > logs/test_summary.csv
+          echo "1,15,$(date -Iseconds)" >> logs/test_summary.csv
+
+      - name: Upload logs (partial)
+        uses: actions/upload-artifact@v4
+        with:
+          name: l2evpn-logs
+          path: logs/*
+          if-no-files-found: warn
+
+  config:
+    name: 3) Push Base Config (mock)
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - name: Simulo push_config
+        run: |
+          echo "Pushing base configs..." | tee -a logs/pipeline.log
+          sleep 2
+          echo "✅ Config applied (mock)" | tee -a logs/pipeline.log
+
+      - name: Append CSV (Run 2)
+        run: echo "2,0,$(date -Iseconds)" >> logs/test_summary.csv
+
+      - name: Upload logs (append)
+        uses: actions/upload-artifact@v4
+        with:
+          name: l2evpn-logs
+          path: logs/*
+          if-no-files-found: warn
+
+  validate:
+    name: 4) Validation (mock ping/show)
+    runs-on: ubuntu-latest
+    needs: config
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run tests (mock)
+        run: |
+          echo "Running ping/show..." | tee -a logs/pipeline.log
+          printf "PING 172.20.20.4: time=4.5 ms\n" | tee -a logs/pipeline.log
+          echo "✅ Validation OK" | tee -a logs/pipeline.log
+
+      - name: Append CSV (Run 3)
+        run: echo "3,0,$(date -Iseconds)" >> logs/test_summary.csv
+
+      - name: Upload final artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: l2evpn-logs
+          path: logs/*
+          if-no-files-found: error
